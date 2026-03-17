@@ -3,7 +3,7 @@ const http = require("http");
 
 const SUBS = {
   standart: {
-    file: "https://raw.githubusercontent.com/ТВОЙ_ЮЗЕРНЕЙМ/vpn-sub/main/standart.txt",
+    file: "https://raw.githubusercontent.com/sokxyy-ops/SkyWhy/refs/heads/main/standart.txt",
     title: "SkyWhy Standart",
     total: "107374182400",
     expire: "1893456000",
