@@ -7,14 +7,14 @@ const SUBS = {
     title: "SkyWhy Standart",
     total: "107374182400",
     expire: "1893456000",
-    tg: "https://t.me/your_channel"
+    tg: "https://t.me/sokxyybc"
   },
   family: {
-    file: "https://raw.githubusercontent.com/ТВОЙ_ЮЗЕРНЕЙМ/vpn-sub/main/family.txt",
+    file: "https://raw.githubusercontent.com/sokxyy-ops/SkyWhy/refs/heads/main/family.txt",
     title: "SkyWhy Family",
     total: "214748364800",
     expire: "1893456000",
-    tg: "https://t.me/your_channel"
+    tg: "https://t.me/sokxyybc"
   }
 };
 
