@@ -52,8 +52,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "HEAD") {
       res.writeHead(200, {
         "Profile-Title": sub.title,
-        "profile-update-interval": "24",
-        "subscription-userinfo": `upload=0; download=0; total=${sub.total}; expire=${sub.expire}`,
+        "profile-update-interval": "1",
+        "subscription-userinfo": `upload=0; download=0; total=0; expire=${sub.expire}`,
         "profile-web-page-url": sub.tg,
         "support-url": sub.tg
       });
@@ -69,8 +69,8 @@ const server = http.createServer(async (req, res) => {
       "Expires": "0",
       "Access-Control-Allow-Origin": "*",
       "Profile-Title": sub.title,
-      "profile-update-interval": "24",
-      "subscription-userinfo": `upload=0; download=0; total=${sub.total}; expire=${sub.expire}`,
+      "profile-update-interval": "1",
+      "subscription-userinfo": `upload=0; download=0; total=0; expire=${sub.expire}`,
       "profile-web-page-url": sub.tg,
       "support-url": sub.tg
     });
