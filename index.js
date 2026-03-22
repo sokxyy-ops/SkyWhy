@@ -1,4 +1,3 @@
-
 const http = require("http");
 
 const SUBS = {
@@ -33,6 +32,101 @@ async function getText(url) {
   return await res.text();
 }
 
+function tryParseJsonBlock(text) {
+  try {
+    const obj = JSON.parse(text);
+    return JSON.stringify(obj, null, 2);
+  } catch {
+    return null;
+  }
+}
+
+function extractMixedContent(text) {
+  const result = [];
+  const lines = text.split(/\r?\n/);
+
+  let i = 0;
+
+  while (i < lines.length) {
+    let line = lines[i].trim();
+
+    if (!line) {
+      i++;
+      continue;
+    }
+
+    // 1. VLESS строка
+    if (line.startsWith("vless://")) {
+      result.push(line);
+      i++;
+      continue;
+    }
+
+    // 2. JSON блок
+    if (line.startsWith("{")) {
+      let block = [];
+      let braceCount = 0;
+      let started = false;
+
+      while (i < lines.length) {
+        const currentLine = lines[i];
+        block.push(currentLine);
+
+        for (const ch of currentLine) {
+          if (ch === "{") {
+            braceCount++;
+            started = true;
+          } else if (ch === "}") {
+            braceCount--;
+          }
+        }
+
+        i++;
+
+        if (started && braceCount === 0) {
+          break;
+        }
+      }
+
+      const jsonText = block.join("\n").trim();
+      const parsed = tryParseJsonBlock(jsonText);
+
+      if (parsed) {
+        result.push(parsed);
+      } else {
+        result.push(jsonText);
+      }
+
+      continue;
+    }
+
+    // 3. Если строка вида vless://...|{json}
+    if (line.includes("|")) {
+      const parts = line.split("|").map(x => x.trim()).filter(Boolean);
+
+      for (const part of parts) {
+        if (part.startsWith("vless://")) {
+          result.push(part);
+        } else if (part.startsWith("{")) {
+          const parsed = tryParseJsonBlock(part);
+          result.push(parsed || part);
+        } else {
+          result.push(part);
+        }
+      }
+
+      i++;
+      continue;
+    }
+
+    // 4. Всё остальное
+    result.push(line);
+    i++;
+  }
+
+  return result.join("\n\n");
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const path = req.url.split("?")[0].replace(/^\/+|\/+$/g, "");
@@ -53,14 +147,15 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, {
         "Profile-Title": sub.title,
         "profile-update-interval": "1",
-        "subscription-userinfo": `upload=0; download=0; total=0; expire=${sub.expire}`,
+        "subscription-userinfo": `upload=0; download=0; total=${sub.total}; expire=${sub.expire}`,
         "profile-web-page-url": sub.tg,
         "support-url": sub.tg
       });
       return res.end();
     }
 
-    const body = await getText(sub.file);
+    const sourceText = await getText(sub.file);
+    const body = extractMixedContent(sourceText);
 
     res.writeHead(200, {
       "Content-Type": "text/plain; charset=utf-8",
@@ -70,7 +165,7 @@ const server = http.createServer(async (req, res) => {
       "Access-Control-Allow-Origin": "*",
       "Profile-Title": sub.title,
       "profile-update-interval": "1",
-      "subscription-userinfo": `upload=0; download=0; total=0; expire=${sub.expire}`,
+      "subscription-userinfo": `upload=0; download=0; total=${sub.total}; expire=${sub.expire}`,
       "profile-web-page-url": sub.tg,
       "support-url": sub.tg
     });
