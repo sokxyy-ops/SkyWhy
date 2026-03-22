@@ -1,5 +1,5 @@
 import express from "express";
-import fs from "fs/promises";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -9,82 +9,53 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// файлы лежат в этом же репо
 const STANDART_FILE = path.join(__dirname, "standart.txt");
 const FAMILY_FILE = path.join(__dirname, "family.txt");
 
-// ===== общие заголовки =====
-function setSubHeaders(res, profileTitle) {
-  res.setHeader("Content-Type", "text/plain; charset=utf-8");
-
-  // название подписки
-  res.setHeader("Profile-Title", encodeURIComponent(profileTitle));
-  res.setHeader("X-Profile-Title", encodeURIComponent(profileTitle));
-
-  // автообновление 1 час
-  res.setHeader("Profile-Update-Interval", "1");
-  res.setHeader("X-Profile-Update-Interval", "1");
-
-  // кнопка / ссылка
-  res.setHeader("Profile-Web-Page-URL", "https://t.me/sokxyybc");
-  res.setHeader("Support-URL", "https://t.me/sokxyybc");
-  res.setHeader("X-Profile-Web-Page-URL", "https://t.me/sokxyybc");
-
-  // инфа подписки
-  // expire = 02.09.2390 00:00:00 UTC
+function setHeaders(res, title) {
   const expire = Math.floor(new Date("2390-09-02T00:00:00Z").getTime() / 1000);
 
-  res.setHeader(
-    "Subscription-Userinfo",
-    `upload=0; download=0; total=1125899906842624; expire=${expire}`
-  );
-}
-
-// ===== чтение файла =====
-async function readLocalFile(filePath) {
-  const content = await fs.readFile(filePath, "utf8");
-  return content.trim() + "\n";
-}
-
-// ===== главная =====
-app.get("/", (req, res) => {
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.send(
-`SkyWhy subscription server is running
+  res.setHeader("Profile-Title", encodeURIComponent(title));
+  res.setHeader("Profile-Update-Interval", "1");
+  res.setHeader("Subscription-Userinfo", `upload=0; download=0; total=1125899906842624; expire=${expire}`);
+  res.setHeader("Profile-Web-Page-URL", "https://t.me/sokxyybc");
+  res.setHeader("Support-URL", "https://t.me/sokxyybc");
+}
 
-Доступно:
-- /standart
-- /family`
-  );
-});
-
-// ===== standart =====
-app.get("/standart", async (req, res) => {
-  try {
-    const content = await readLocalFile(STANDART_FILE);
-    setSubHeaders(res, "SkyWhy Standart");
-    res.status(200).send(content);
-  } catch (e) {
-    res.status(500).send(`Ошибка чтения standart.txt: ${e.message}`);
+function readFileSafe(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
   }
+  return fs.readFileSync(filePath, "utf8").trim() + "\n";
+}
+
+app.get("/", (req, res) => {
+  res.status(200).send("OK");
 });
 
-// ===== family =====
-app.get("/family", async (req, res) => {
-  try {
-    const content = await readLocalFile(FAMILY_FILE);
-    setSubHeaders(res, "SkyWhy Family");
-    res.status(200).send(content);
-  } catch (e) {
-    res.status(500).send(`Ошибка чтения family.txt: ${e.message}`);
+app.get("/standart", (req, res) => {
+  const content = readFileSafe(STANDART_FILE);
+
+  if (!content) {
+    return res.status(404).send("standart.txt not found");
   }
+
+  setHeaders(res, "SkyWhy Standart");
+  res.status(200).send(content);
 });
 
-// ===== health =====
-app.get("/health", (req, res) => {
-  res.json({ ok: true });
+app.get("/family", (req, res) => {
+  const content = readFileSafe(FAMILY_FILE);
+
+  if (!content) {
+    return res.status(404).send("family.txt not found");
+  }
+
+  setHeaders(res, "SkyWhy Family");
+  res.status(200).send(content);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
