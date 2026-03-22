@@ -1,6 +1,7 @@
 {
   "name": "skywhy-json-sub",
   "version": "1.0.0",
+  "description": "JSON subscription server",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
