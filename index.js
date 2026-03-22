@@ -4,22 +4,49 @@ const path = require("path");
 
 const PORT = process.env.PORT;
 
-function send(res, code, data, type = "text/plain") {
-  res.writeHead(code, { "Content-Type": type + "; charset=utf-8" });
-  res.end(data);
-}
+const server = http.createServer((req, res) => {
+  const url = req.url.split("?")[0];
+
+  // health для railway
+  if (url === "/health") {
+    res.writeHead(200);
+    return res.end("ok");
+  }
+
+  if (url === "/") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    return res.end("WORKING");
+  }
+
+  if (url === "/standart") {
+    return sendFile(res, "standart.json");
+  }
+
+  if (url === "/family") {
+    return sendFile(res, "family.json");
+  }
+
+  res.writeHead(404);
+  res.end("not found");
+});
 
 function sendFile(res, file) {
   const filePath = path.join(__dirname, file);
 
   fs.readFile(filePath, "utf8", (err, data) => {
-    if (err) return send(res, 404, "file not found");
-    send(res, 200, data);
+    if (err) {
+      res.writeHead(404);
+      return res.end("file not found");
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/plain; charset=utf-8"
+    });
+
+    res.end(data);
   });
 }
 
-const server = http.createServer((req, res) => {
-  const url = req.url.split("?")[0];
-
-  // 🔥 ЭТО ДЛЯ RAILWAY (ВАЖНО)
-  if (url === "/health" || url ===
+server.listen(PORT, "0.0.0.0", () => {
+  console.log("Server started on port " + PORT);
+});
