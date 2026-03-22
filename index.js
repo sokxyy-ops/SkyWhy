@@ -1,110 +1,90 @@
-import http from "node:http";
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import express from "express";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const PORT = Number(process.env.PORT || 3000);
+const app = express();
+const PORT = process.env.PORT || 3000;
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const TG_CHANNEL_URL = "https://t.me/sokxyybc";
-const PROFILE_WEB_PAGE_URL = "https://t.me/sokxyybc";
-
-// 02.09.2390 00:00:00 UTC
-const EXPIRE_UNIX = "13275014400";
-
-// Файлы прямо из репозитория
+// файлы лежат в этом же репо
 const STANDART_FILE = path.join(__dirname, "standart.txt");
 const FAMILY_FILE = path.join(__dirname, "family.txt");
 
-function makeHeaders(title) {
-  return {
-    "Content-Type": "text/plain; charset=utf-8",
-    "Profile-Title": title,
-    "profile-update-interval": "1",
-    "Subscription-Userinfo": `upload=0; download=0; total=999999999999999; expire=${EXPIRE_UNIX}`,
-    "support-url": TG_CHANNEL_URL,
-    "profile-web-page-url": PROFILE_WEB_PAGE_URL,
-    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-    "Pragma": "no-cache",
-    "Expires": "0"
-  };
+// ===== общие заголовки =====
+function setSubHeaders(res, profileTitle) {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+
+  // название подписки
+  res.setHeader("Profile-Title", encodeURIComponent(profileTitle));
+  res.setHeader("X-Profile-Title", encodeURIComponent(profileTitle));
+
+  // автообновление 1 час
+  res.setHeader("Profile-Update-Interval", "1");
+  res.setHeader("X-Profile-Update-Interval", "1");
+
+  // кнопка / ссылка
+  res.setHeader("Profile-Web-Page-URL", "https://t.me/sokxyybc");
+  res.setHeader("Support-URL", "https://t.me/sokxyybc");
+  res.setHeader("X-Profile-Web-Page-URL", "https://t.me/sokxyybc");
+
+  // инфа подписки
+  // expire = 02.09.2390 00:00:00 UTC
+  const expire = Math.floor(new Date("2390-09-02T00:00:00Z").getTime() / 1000);
+
+  res.setHeader(
+    "Subscription-Userinfo",
+    `upload=0; download=0; total=1125899906842624; expire=${expire}`
+  );
 }
 
-function normalizeVlessText(text) {
-  return String(text)
-    .replace(/\r/g, "")
-    .split("\n")
-    .map(line => line.trim())
-    .filter(line => line && line.startsWith("vless://"))
-    .join("\n");
+// ===== чтение файла =====
+async function readLocalFile(filePath) {
+  const content = await fs.readFile(filePath, "utf8");
+  return content.trim() + "\n";
 }
 
-async function loadSubscriptionFromFile(filePath) {
-  const text = await fs.readFile(filePath, "utf8");
-  const normalized = normalizeVlessText(text);
+// ===== главная =====
+app.get("/", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.send(
+`SkyWhy subscription server is running
 
-  if (!normalized) {
-    throw new Error(`No valid vless:// links found in ${path.basename(filePath)}`);
-  }
+Доступно:
+- /standart
+- /family`
+  );
+});
 
-  return normalized;
-}
-
-function send(res, status, body, headers = {}) {
-  res.writeHead(status, headers);
-  res.end(body);
-}
-
-const server = http.createServer(async (req, res) => {
+// ===== standart =====
+app.get("/standart", async (req, res) => {
   try {
-    const host = req.headers.host || "localhost";
-    const url = new URL(req.url || "/", `http://${host}`);
-    const pathname = url.pathname.toLowerCase();
-
-    if (pathname === "/health") {
-      return send(res, 200, "ok", {
-        "Content-Type": "text/plain; charset=utf-8"
-      });
-    }
-
-    if (pathname === "/" || pathname === "/standart" || pathname === "/standart.txt") {
-      const body = await loadSubscriptionFromFile(STANDART_FILE);
-      return send(res, 200, body, makeHeaders("SkyWhy Standart"));
-    }
-
-    if (pathname === "/family" || pathname === "/family.txt") {
-      const body = await loadSubscriptionFromFile(FAMILY_FILE);
-      return send(res, 200, body, makeHeaders("SkyWhy Family"));
-    }
-
-    return send(
-      res,
-      404,
-      [
-        "Not found.",
-        "",
-        "Use:",
-        "/standart",
-        "/family",
-        "/health"
-      ].join("\n"),
-      {
-        "Content-Type": "text/plain; charset=utf-8"
-      }
-    );
-  } catch (error) {
-    return send(
-      res,
-      500,
-      `Subscription error: ${error instanceof Error ? error.message : String(error)}`,
-      {
-        "Content-Type": "text/plain; charset=utf-8"
-      }
-    );
+    const content = await readLocalFile(STANDART_FILE);
+    setSubHeaders(res, "SkyWhy Standart");
+    res.status(200).send(content);
+  } catch (e) {
+    res.status(500).send(`Ошибка чтения standart.txt: ${e.message}`);
   }
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`SkyWhy subscription server running on port ${PORT}`);
+// ===== family =====
+app.get("/family", async (req, res) => {
+  try {
+    const content = await readLocalFile(FAMILY_FILE);
+    setSubHeaders(res, "SkyWhy Family");
+    res.status(200).send(content);
+  } catch (e) {
+    res.status(500).send(`Ошибка чтения family.txt: ${e.message}`);
+  }
+});
+
+// ===== health =====
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server started on port ${PORT}`);
 });
