@@ -1,52 +1,22 @@
 const http = require("http");
 const fs = require("fs");
-const path = require("path");
 
 const PORT = process.env.PORT;
 
-const server = http.createServer((req, res) => {
-  const url = req.url.split("?")[0];
-
-  // health для railway
-  if (url === "/health") {
-    res.writeHead(200);
-    return res.end("ok");
+http.createServer((req, res) => {
+  if (req.url === "/") {
+    res.end("WORKING");
+    return;
   }
 
-  if (url === "/") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    return res.end("WORKING");
+  if (req.url === "/standart") {
+    return fs.createReadStream("standart.json").pipe(res);
   }
 
-  if (url === "/standart") {
-    return sendFile(res, "standart.json");
+  if (req.url === "/family") {
+    return fs.createReadStream("family.json").pipe(res);
   }
 
-  if (url === "/family") {
-    return sendFile(res, "family.json");
-  }
-
-  res.writeHead(404);
+  res.statusCode = 404;
   res.end("not found");
-});
-
-function sendFile(res, file) {
-  const filePath = path.join(__dirname, file);
-
-  fs.readFile(filePath, "utf8", (err, data) => {
-    if (err) {
-      res.writeHead(404);
-      return res.end("file not found");
-    }
-
-    res.writeHead(200, {
-      "Content-Type": "text/plain; charset=utf-8"
-    });
-
-    res.end(data);
-  });
-}
-
-server.listen(PORT, "0.0.0.0", () => {
-  console.log("Server started on port " + PORT);
-});
+}).listen(PORT, "0.0.0.0");
