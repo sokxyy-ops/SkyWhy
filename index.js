@@ -17,19 +17,14 @@ function setSubHeaders(res, title) {
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Profile-Title", title);
-  res.setHeader("X-Profile-Title", title);
   res.setHeader("Profile-Update-Interval", "1");
-  res.setHeader("X-Profile-Update-Interval", "1");
-  res.setHeader("Profile-Web-Page-URL", "https://t.me/sokxyybc");
-  res.setHeader("Support-URL", "https://t.me/sokxyybc");
-  res.setHeader(
-    "Subscription-Userinfo",
-    `upload=0; download=0; total=0; expire=${expire}`
-  );
+  res.setHeader("Subscription-Userinfo", `upload=0; download=0; total=0; expire=${expire}`);
 }
 
 function readFileSafe(filePath) {
   if (!fs.existsSync(filePath)) return null;
+
+  // 👇 ВАЖНО: ничего не трогаем, отдаем как есть
   return fs.readFileSync(filePath, "utf8").trim() + "\n";
 }
 
@@ -41,22 +36,22 @@ app.get("/standart", (req, res) => {
   const content = readFileSafe(STANDART_FILE);
 
   if (!content) {
-    return res.status(404).type("text/plain").send("standart.txt not found");
+    return res.status(404).send("standart.txt not found");
   }
 
   setSubHeaders(res, "SkyWhy Standart");
-  return res.status(200).send(content);
+  return res.send(content);
 });
 
 app.get("/family", (req, res) => {
   const content = readFileSafe(FAMILY_FILE);
 
   if (!content) {
-    return res.status(404).type("text/plain").send("family.txt not found");
+    return res.status(404).send("family.txt not found");
   }
 
   setSubHeaders(res, "SkyWhy Family");
-  return res.status(200).send(content);
+  return res.send(content);
 });
 
 app.listen(PORT, "0.0.0.0", () => {
