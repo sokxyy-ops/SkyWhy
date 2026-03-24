@@ -24,7 +24,7 @@ function setSubHeaders(res, title) {
   res.setHeader("Support-URL", "https://t.me/sokxyybc");
   res.setHeader(
     "Subscription-Userinfo",
-    `upload=100939383940; download=89900029283; total=0; expire=${expire}`
+    `upload=0; download=0; total=0; expire=${expire}`
   );
 }
 
