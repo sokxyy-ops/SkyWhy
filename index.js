@@ -13,12 +13,14 @@ const STANDART_FILE = path.join(__dirname, "standart.txt");
 const FAMILY_FILE = path.join(__dirname, "family.txt");
 
 function setSubHeaders(res, title) {
-  const expire = Math.floor(new Date("2390-09-02T00:00:00Z").getTime() / 1000);
+  const expire = Math.floor(new Date("2999-09-02T00:00:00Z").getTime() / 1000);
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Profile-Title", title);
   res.setHeader("Profile-Update-Interval", "1");
   res.setHeader("Subscription-Userinfo", `upload=0; download=0; total=0; expire=${expire}`);
+  res.setHeader("Support-URL", "https://t.me/sokxyybc");
+  res.setHeader("Profile-Web-Page-URL", "https://t.me/sokxyybc");
 }
 
 function readFileSafe(filePath) {
@@ -29,7 +31,7 @@ function readFileSafe(filePath) {
 }
 
 app.get("/", (req, res) => {
-  res.type("text/plain").send("OK");
+  res.type("text/plain").send("OK\nhttps://t.me/sokxyybc");
 });
 
 app.get("/standart", (req, res) => {
