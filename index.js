@@ -33,7 +33,8 @@ function setSubHeaders(res, title, expireTs = null) {
 
 function readFileSafe(filePath) {
   if (!fs.existsSync(filePath)) return null;
-  return fs.readFileSync(filePath, "utf8").trim() + "\n";
+  const raw = fs.readFileSync(filePath, "utf8");
+  return raw.trim() ? raw.trim() + "\n" : "";
 }
 
 function sha256(text) {
@@ -55,68 +56,87 @@ async function fetchTrialInfo(token) {
     method: "GET",
     headers: {
       "User-Agent": "SkyWhy-SubServer/1.0",
-      "Accept": "application/json, text/plain, */*"
-    }
+      "Accept": "application/json, text/plain, */*",
+    },
   });
 
+  const text = await resp.text().catch(() => "");
+
   if (resp.status === 404) {
-    return { ok: false, reason: "not_found" };
+    return { ok: false, reason: "not_found", raw: text };
   }
 
   if (!resp.ok) {
-    const txt = await resp.text().catch(() => "");
-    throw new Error(`trial-info ${resp.status}: ${txt || "request failed"}`);
+    throw new Error(`trial-info ${resp.status}: ${text || "request failed"}`);
   }
 
-  return await resp.json();
+  try {
+    return JSON.parse(text || "{}");
+  } catch {
+    throw new Error(`trial-info invalid json: ${text}`);
+  }
 }
 
 app.get("/", (req, res) => {
-  res.type("text/plain").send("OK\nhttps://t.me/sokxyybc");
+  res.type("text/plain; charset=utf-8").send("OK\nhttps://t.me/sokxyybc");
 });
 
 app.get("/standart", (req, res) => {
   const content = readFileSafe(STANDART_FILE);
 
-  if (!content) {
-    return res.status(404).send("standart.txt not found");
+  if (content === null) {
+    return res.status(404).type("text/plain; charset=utf-8").send("standart.txt not found");
   }
 
   setSubHeaders(res, "SkyWhy Standart");
-  return res.send(content);
+  return res.status(200).send(content);
 });
 
 app.get("/family", (req, res) => {
   const content = readFileSafe(FAMILY_FILE);
 
-  if (!content) {
-    return res.status(404).send("family.txt not found");
+  if (content === null) {
+    return res.status(404).type("text/plain; charset=utf-8").send("family.txt not found");
   }
 
   setSubHeaders(res, "SkyWhy Family");
-  return res.send(content);
+  return res.status(200).send(content);
 });
 
 app.get("/trial/:token", async (req, res) => {
   try {
     const token = String(req.params.token || "").trim();
     if (!token) {
-      return res.status(404).send("trial not found");
+      return res.status(200).type("text/plain; charset=utf-8").send("trial not found: empty token");
     }
 
     const info = await fetchTrialInfo(token);
+    console.log("[trial] token:", token);
+    console.log("[trial] info:", info);
 
     if (!info || info.ok === false) {
-      setSubHeaders(res, "SkyWhy Trial", Math.floor(Date.now() / 1000));
-      return res.status(200).send("");
+      return res
+        .status(200)
+        .type("text/plain; charset=utf-8")
+        .send(`trial invalid\n${JSON.stringify(info, null, 2)}`);
     }
 
     const now = Math.floor(Date.now() / 1000);
     const expiresAt = Number(info.expires_at || 0);
 
-    if (!expiresAt || now >= expiresAt) {
+    if (!expiresAt) {
+      return res
+        .status(200)
+        .type("text/plain; charset=utf-8")
+        .send(`trial invalid: no expires_at\n${JSON.stringify(info, null, 2)}`);
+    }
+
+    if (now >= expiresAt) {
       setSubHeaders(res, "SkyWhy Trial", expiresAt || now);
-      return res.status(200).send("");
+      return res
+        .status(200)
+        .type("text/plain; charset=utf-8")
+        .send(`trial expired\nnow=${now}\nexpires_at=${expiresAt}\n${JSON.stringify(info, null, 2)}`);
     }
 
     const plan = String(info.plan || "standard").toLowerCase();
@@ -124,16 +144,29 @@ app.get("/trial/:token", async (req, res) => {
     const title = plan === "family" ? "SkyWhy Trial Family" : "SkyWhy Trial Standart";
 
     const content = readFileSafe(filePath);
-    if (!content) {
-      setSubHeaders(res, title, expiresAt);
-      return res.status(200).send("");
+
+    if (content === null) {
+      return res
+        .status(200)
+        .type("text/plain; charset=utf-8")
+        .send(`trial file missing\nplan=${plan}\nfilePath=${filePath}`);
+    }
+
+    if (!content.trim()) {
+      return res
+        .status(200)
+        .type("text/plain; charset=utf-8")
+        .send(`trial file empty\nplan=${plan}\nfilePath=${filePath}`);
     }
 
     setSubHeaders(res, title, expiresAt);
     return res.status(200).send(content);
   } catch (e) {
     console.error("[trial] error:", e?.message || e);
-    return res.status(404).send("trial not found");
+    return res
+      .status(200)
+      .type("text/plain; charset=utf-8")
+      .send(`trial error: ${e?.message || e}`);
   }
 });
 
